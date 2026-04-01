@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LeonelB BPM Deck v3.0</title>
+    <link rel="manifest" href="manifest.json">
     <style>
         body {
             background-color: #050505;
@@ -82,8 +83,7 @@
     <div class="deck">
         <h1>LB MASTER DECK</h1>
         
-        <div class="visualizer" id="visualizer">
-            </div>
+        <div class="visualizer" id="visualizer"></div>
 
         <div class="controls">
             <input type="file" id="audioFile" accept="audio/*">
@@ -101,7 +101,7 @@
             <button id="playBtn">▶️ Play / Pause</button>
         </div>
 
-        <div class="info" id="status">Sube un tema para empezar...</div>
+        <div id="status" class="info">Sube un tema para empezar...</div>
     </div>
 
     <script>
@@ -150,7 +150,6 @@
             gainNode.connect(analyser);
             analyser.connect(audioCtx.destination);
 
-            // Ajustar velocidad inicial
             source.playbackRate.value = speedRange.value;
             gainNode.gain.value = document.getElementById('volRange').value / 100;
 
@@ -161,7 +160,7 @@
         }
 
         playBtn.onclick = () => {
-            if(!audioCtx) return;
+            if(!audioCtx || !audioBuffer) return;
             if(isPlaying) {
                 pausedAt = (audioCtx.currentTime - startTime) * source.playbackRate.value;
                 source.stop();
@@ -169,29 +168,20 @@
                 playBtn.innerText = "▶️ Play";
             } else {
                 playAudio();
-                // --- CONTROL DE NOTIFICACIONES (Media Session API) ---
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: 'LB Master Deck',
-                artist: 'LeonelB OFFICIAL',
-                album: 'BPM Mixer v3.0',
-                artwork: [
-                    { src: 'logo.png', sizes: '512x512', type: 'image/png' }
-                ]
-// Línea 181: Agrégale una llave antes del paréntesis
-            }); 
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: 'LB Master Deck',
+                        artist: 'LeonelB OFFICIAL',
+                        album: 'BPM Mixer v3.0',
+                        artwork: [{ src: 'logo.png', sizes: '512x512', type: 'image/png' }]
+                    });
+                    navigator.mediaSession.setActionHandler('play', () => playBtn.click());
+                    navigator.mediaSession.setActionHandler('pause', () => playBtn.click());
+                }
+                playBtn.innerText = "🛑 Pause";
+            }
+        };
 
-// Línea 182 y 183: Mete aquí los controladores de los botones
-            navigator.mediaSession.setActionHandler('play', () => playBtn.click());
-            navigator.mediaSession.setActionHandler('pause', () => playBtn.click());
-        } // <-- Esta cierra el "if" de la línea 173
-
-        playBtn.innerText = "🛑 Pause"; // Esta sería tu línea 184
-    } // Esta cierra el "else" de la línea 170
-}; // Esta cierra el "playBtn.onclick" de la línea 164
-        
-
-        // Cambiar BPM en tiempo real
         speedRange.oninput = (e) => {
             const val = e.target.value;
             document.getElementById('speedVal').innerText = val;
@@ -200,7 +190,6 @@
             }
         };
 
-        // Cambiar Volumen
         document.getElementById('volRange').oninput = (e) => {
             const val = e.target.value;
             document.getElementById('volVal').innerText = val;
@@ -218,6 +207,11 @@
             });
             requestAnimationFrame(updateVisuals);
         }
+    </script>
+    <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js');
+    }
     </script>
 </body>
 </html>
