@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeonelB BPM Deck v3.0</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            border: 4px solid #00ff00;
+            box-sizing: border-box;
+        }
+
+        .deck {
+            background: #111;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 30px #00ff00;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .visualizer {
+            height: 100px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 3px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #00ff00;
+        }
+
+        .bar {
+            width: 10px;
+            background: #00ff00;
+            min-height: 5px;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: #00ff00;
+        }
+
+        input[type=file] {
+            font-size: 0.8rem;
+            color: #00ff00;
+        }
+
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        button:active { transform: scale(0.95); }
+
+        .info { font-size: 0.9rem; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="deck">
+        <h1>LB MASTER DECK</h1>
+        
+        <div class="visualizer" id="visualizer">
+            </div>
+
+        <div class="controls">
+            <input type="file" id="audioFile" accept="audio/*">
+            
+            <div class="control-group">
+                <label>BPM / Velocidad: <span id="speedVal">1.0</span>x</label>
+                <input type="range" id="speedRange" min="0.5" max="2.0" step="0.01" value="1.0">
+            </div>
+
+            <div class="control-group">
+                <label>Volumen: <span id="volVal">100</span>%</label>
+                <input type="range" id="volRange" min="0" max="100" value="100">
+            </div>
+
+            <button id="playBtn">▶️ Play / Pause</button>
+        </div>
+
+        <div class="info" id="status">Sube un tema para empezar...</div>
+    </div>
+
+    <script>
+        let audioCtx;
+        let source;
+        let gainNode;
+        let analyser;
+        let isPlaying = false;
+        let audioBuffer = null;
+        let startTime = 0;
+        let pausedAt = 0;
+
+        const playBtn = document.getElementById('playBtn');
+        const speedRange = document.getElementById('speedRange');
+        const fileInput = document.getElementById('audioFile');
+
+        // Crear barras del visualizador
+        const vis = document.getElementById('visualizer');
+        for(let i=0; i<20; i++) {
+            let b = document.createElement('div');
+            b.className = 'bar';
+            vis.appendChild(b);
+        }
+
+        fileInput.onchange = async (e) => {
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            document.getElementById('status').innerText = "Procesando audio...";
+            
+            const file = e.target.files[0];
+            const arrayBuffer = await file.arrayBuffer();
+            audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            document.getElementById('status').innerText = "¡Listo para sonar!";
+        };
+
+        function playAudio() {
+            if(!audioBuffer) return;
+
+            source = audioCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            
+            gainNode = audioCtx.createGain();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 64;
+
+            source.connect(gainNode);
+            gainNode.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            // Ajustar velocidad inicial
+            source.playbackRate.value = speedRange.value;
+            gainNode.gain.value = document.getElementById('volRange').value / 100;
+
+            source.start(0, pausedAt);
+            startTime = audioCtx.currentTime - pausedAt / source.playbackRate.value;
+            isPlaying = true;
+            updateVisuals();
+        }
+
+        playBtn.onclick = () => {
+            if(!audioCtx) return;
+            if(isPlaying) {
+                pausedAt = (audioCtx.currentTime - startTime) * source.playbackRate.value;
+                source.stop();
+                isPlaying = false;
+                playBtn.innerText = "▶️ Play";
+            } else {
+                playAudio();
+                // --- CONTROL DE NOTIFICACIONES (Media Session API) ---
+if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'LB Master Deck',
+        artist: 'LeonelB OFFICIAL',
+        album: 'BPM Mixer v3.0',
+        artwork: [
+            { src: 'logo.png', sizes: '512x512', type: 'image/png' }
+        ]
+    });
+
+    // Acción para el botón Play/Pause de la notificación
+    navigator.mediaSession.setActionHandler('play', () => {
+        if(!isPlaying) playBtn.click();
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+        if(isPlaying) playBtn.click();
+    });
+}
+
+                playBtn.innerText = "🛑 Pause";
+            }
+        };
+
+        // Cambiar BPM en tiempo real
+        speedRange.oninput = (e) => {
+            const val = e.target.value;
+            document.getElementById('speedVal').innerText = val;
+            if(source && isPlaying) {
+                source.playbackRate.setTargetAtTime(val, audioCtx.currentTime, 0.1);
+            }
+        };
+
+        // Cambiar Volumen
+        document.getElementById('volRange').oninput = (e) => {
+            const val = e.target.value;
+            document.getElementById('volVal').innerText = val;
+            if(gainNode) gainNode.gain.value = val / 100;
+        };
+
+        function updateVisuals() {
+            if(!isPlaying) return;
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+            const bars = document.querySelectorAll('.bar');
+            bars.forEach((bar, i) => {
+                let h = (dataArray[i] / 255) * 100;
+                bar.style.height = h + "px";
+            });
+            requestAnimationFrame(updateVisuals);
+        }
+    </script>
+</body>
+</html>
