@@ -6,7 +6,6 @@
 * **BPM Control:** Ajusta la velocidad de tus temas en tiempo real sin perder calidad.
 * **Visualizador Neón:** 20 barras reactivas que bailan al ritmo de tu música.
 * **Modo PWA:** Instálalo en tu celular y úsalo sin internet gracias al Service Worker optimizado.
-* **Control de Notificaciones:** Maneja el Play/Pause directamente desde la barra de tareas de tu Android (Media Session API).
 
 ## 🛠️ Tecnologías Usadas
 * **HTML5 / CSS3:** Diseño estilo terminal neón.
@@ -16,7 +15,7 @@
 ## 📦 Instalación
 1. Clona este repositorio.
 2. Asegúrate de tener el archivo `logo.png` en la raíz.
-3. Súbelo a **GitHub Pages** para activar las funciones de seguridad (HTTPS) necesarias para el control de notificaciones.
+3. Súbelo a **GitHub Pages** para activar las funciones de seguridad (HTTPS).
 
 ---
 Desarrollado con ❤️ por **LeonelB OFFICIAL 2.0** 🦁🔥
