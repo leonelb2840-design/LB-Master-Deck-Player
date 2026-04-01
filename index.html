@@ -170,28 +170,26 @@
             } else {
                 playAudio();
                 // --- CONTROL DE NOTIFICACIONES (Media Session API) ---
-if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-        title: 'LB Master Deck',
-        artist: 'LeonelB OFFICIAL',
-        album: 'BPM Mixer v3.0',
-        artwork: [
-            { src: 'logo.png', sizes: '512x512', type: 'image/png' }
-        ]
-    });
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: 'LB Master Deck',
+                artist: 'LeonelB OFFICIAL',
+                album: 'BPM Mixer v3.0',
+                artwork: [
+                    { src: 'logo.png', sizes: '512x512', type: 'image/png' }
+                ]
+// Línea 181: Agrégale una llave antes del paréntesis
+            }); 
 
-    // Acción para el botón Play/Pause de la notificación
-    navigator.mediaSession.setActionHandler('play', () => {
-        if(!isPlaying) playBtn.click();
-    });
-    navigator.mediaSession.setActionHandler('pause', () => {
-        if(isPlaying) playBtn.click();
-    });
-}
+// Línea 182 y 183: Mete aquí los controladores de los botones
+            navigator.mediaSession.setActionHandler('play', () => playBtn.click());
+            navigator.mediaSession.setActionHandler('pause', () => playBtn.click());
+        } // <-- Esta cierra el "if" de la línea 173
 
-                playBtn.innerText = "🛑 Pause";
-            }
-        };
+        playBtn.innerText = "🛑 Pause"; // Esta sería tu línea 184
+    } // Esta cierra el "else" de la línea 170
+}; // Esta cierra el "playBtn.onclick" de la línea 164
+        
 
         // Cambiar BPM en tiempo real
         speedRange.oninput = (e) => {
