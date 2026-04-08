@@ -3,28 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LeonelB BPM Deck v3.0</title>
+    <title>LeonelB BPM Deck v3.1</title>
     <link rel="manifest" href="manifest.json">
     <style>
+        /* 1. Definimos la variable de color global */
+        :root {
+            --accent: #00ff00;
+        }
+
         body {
             background-color: #050505;
-            color: #00ff00;
+            background-size: cover; /* Para que la imagen de fondo se vea bien */
+            background-position: center;
+            color: var(--accent);
             font-family: 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            border: 4px solid #00ff00;
+            border: 4px solid var(--accent);
             box-sizing: border-box;
+            transition: border 0.3s ease;
         }
 
         .deck {
-            background: #111;
-            padding: 30px;
+            background: rgba(17, 17, 17, 0.9); /* Un poco de transparencia por si hay fondo */
+            padding: 20px;
             border-radius: 20px;
-            box-shadow: 0 0 30px #00ff00;
+            box-shadow: 0 0 30px var(--accent);
             text-align: center;
             width: 90%;
             max-width: 400px;
@@ -37,34 +45,35 @@
             justify-content: center;
             gap: 3px;
             margin-bottom: 20px;
-            border-bottom: 2px solid #00ff00;
+            border-bottom: 2px solid var(--accent);
         }
 
         .bar {
             width: 10px;
-            background: #00ff00;
+            background: var(--accent);
             min-height: 5px;
-            box-shadow: 0 0 10px #00ff00;
+            box-shadow: 0 0 10px var(--accent);
         }
 
         .controls {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
         }
 
-        input[type=range] {
-            width: 100%;
-            accent-color: #00ff00;
+        .custom-section {
+            display: flex;
+            justify-content: space-around;
+            background: #222;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
         }
 
-        input[type=file] {
-            font-size: 0.8rem;
-            color: #00ff00;
-        }
-
+        input[type=range] { width: 100%; accent-color: var(--accent); }
+        
         button {
-            background: #00ff00;
+            background: var(--accent);
             color: #000;
             border: none;
             padding: 15px;
@@ -73,9 +82,12 @@
             text-transform: uppercase;
         }
 
-        button:active { transform: scale(0.95); }
-
-        .info { font-size: 0.9rem; margin-top: 10px; }
+        .label-file {
+            font-size: 0.7rem;
+            border: 1px dashed var(--accent);
+            padding: 5px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -83,13 +95,24 @@
     <div class="deck">
         <h1>LB MASTER DECK</h1>
         
+        <div class="custom-section">
+            <div>
+                <label style="font-size: 10px;">COLOR</label><br>
+                <input type="color" id="colorPicker" value="#00ff00">
+            </div>
+            <div>
+                <label class="label-file" for="bgFile">🖼️ CAMBIAR FONDO</label>
+                <input type="file" id="bgFile" accept="image/*" style="display:none">
+            </div>
+        </div>
+
         <div class="visualizer" id="visualizer"></div>
 
         <div class="controls">
             <input type="file" id="audioFile" accept="audio/*">
             
             <div class="control-group">
-                <label>BPM / Velocidad: <span id="speedVal">1.0</span>x</label>
+                <label>BPM: <span id="speedVal">1.0</span>x</label>
                 <input type="range" id="speedRange" min="0.5" max="2.0" step="0.01" value="1.0">
             </div>
 
@@ -100,25 +123,36 @@
 
             <button id="playBtn">▶️ Play / Pause</button>
         </div>
-
-        <div id="status" class="info">Sube un tema para empezar...</div>
+        <div id="status" class="info">Ready, fiera...</div>
     </div>
 
     <script>
-        let audioCtx;
-        let source;
-        let gainNode;
-        let analyser;
-        let isPlaying = false;
-        let audioBuffer = null;
-        let startTime = 0;
-        let pausedAt = 0;
+        // --- LÓGICA DE PERSONALIZACIÓN ---
+        
+        // Cambio de color (Idea 1)
+        const colorPicker = document.getElementById('colorPicker');
+        colorPicker.oninput = (e) => {
+            document.documentElement.style.setProperty('--accent', e.target.value);
+        };
+
+        // Cambio de fondo (Idea 2)
+        const bgFile = document.getElementById('bgFile');
+        bgFile.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                document.body.style.backgroundImage = `url('${url}')`;
+            }
+        };
+
+        // --- TU LÓGICA DE AUDIO (Igual que antes pero optimizada) ---
+        let audioCtx, source, gainNode, analyser;
+        let isPlaying = false, audioBuffer = null, startTime = 0, pausedAt = 0;
 
         const playBtn = document.getElementById('playBtn');
         const speedRange = document.getElementById('speedRange');
         const fileInput = document.getElementById('audioFile');
 
-        // Crear barras del visualizador
         const vis = document.getElementById('visualizer');
         for(let i=0; i<20; i++) {
             let b = document.createElement('div');
@@ -128,31 +162,24 @@
 
         fileInput.onchange = async (e) => {
             if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            document.getElementById('status').innerText = "Procesando audio...";
-            
-            const file = e.target.files[0];
-            const arrayBuffer = await file.arrayBuffer();
+            document.getElementById('status').innerText = "Procesando...";
+            const arrayBuffer = await e.target.files[0].arrayBuffer();
             audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-            document.getElementById('status').innerText = "¡Listo para sonar!";
+            document.getElementById('status').innerText = "¡Mambo listo!";
         };
 
         function playAudio() {
             if(!audioBuffer) return;
-
             source = audioCtx.createBufferSource();
             source.buffer = audioBuffer;
-            
             gainNode = audioCtx.createGain();
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 64;
-
             source.connect(gainNode);
             gainNode.connect(analyser);
             analyser.connect(audioCtx.destination);
-
             source.playbackRate.value = speedRange.value;
             gainNode.gain.value = document.getElementById('volRange').value / 100;
-
             source.start(0, pausedAt);
             startTime = audioCtx.currentTime - pausedAt / source.playbackRate.value;
             isPlaying = true;
@@ -168,32 +195,18 @@
                 playBtn.innerText = "▶️ Play";
             } else {
                 playAudio();
-                if ('mediaSession' in navigator) {
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: 'LB Master Deck',
-                        artist: 'LeonelB OFFICIAL',
-                        album: 'BPM Mixer v3.0',
-                        artwork: [{ src: 'logo.png', sizes: '512x512', type: 'image/png' }]
-                    });
-                    navigator.mediaSession.setActionHandler('play', () => playBtn.click());
-                    navigator.mediaSession.setActionHandler('pause', () => playBtn.click());
-                }
                 playBtn.innerText = "🛑 Pause";
             }
         };
 
         speedRange.oninput = (e) => {
-            const val = e.target.value;
-            document.getElementById('speedVal').innerText = val;
-            if(source && isPlaying) {
-                source.playbackRate.setTargetAtTime(val, audioCtx.currentTime, 0.1);
-            }
+            document.getElementById('speedVal').innerText = e.target.value;
+            if(source && isPlaying) source.playbackRate.setTargetAtTime(e.target.value, audioCtx.currentTime, 0.1);
         };
 
         document.getElementById('volRange').oninput = (e) => {
-            const val = e.target.value;
-            document.getElementById('volVal').innerText = val;
-            if(gainNode) gainNode.gain.value = val / 100;
+            document.getElementById('volVal').innerText = e.target.value;
+            if(gainNode) gainNode.gain.value = e.target.value / 100;
         };
 
         function updateVisuals() {
@@ -202,16 +215,13 @@
             analyser.getByteFrequencyData(dataArray);
             const bars = document.querySelectorAll('.bar');
             bars.forEach((bar, i) => {
-                let h = (dataArray[i] / 255) * 100;
-                bar.style.height = h + "px";
+                bar.style.height = (dataArray[i] / 255) * 100 + "px";
             });
             requestAnimationFrame(updateVisuals);
         }
     </script>
     <script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js');
-    }
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
     </script>
 </body>
 </html>
